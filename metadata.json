@@ -1,0 +1,8 @@
+{
+  "name": "FlexiReport Program - Yayasan Sarana Berbagi",
+  "description": "Aplikasi manajemen rencana kerja 12 bulan, tracking funding, monitoring progres, peta sebaran penyaluran, dan laporan eksekutif Divisi Program Yayasan Sarana Berbagi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique user ID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User full name"
+        },
+        "role": {
+          "type": "string",
+          "description": "User role or title"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp ISO string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Update timestamp ISO string"
+        }
+      },
+      "required": ["userId", "email"]
+    },
+    "UserAppData": {
+      "title": "UserAppData",
+      "description": "User cloud stored operational data including plans, locations, and reports",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID who owns this state"
+        },
+        "yearlyPlans": {
+          "type": "object",
+          "description": "Yearly distribution and funding plans"
+        },
+        "locations": {
+          "type": "array",
+          "description": "List of distribution locations"
+        },
+        "reportData": {
+          "type": "object",
+          "description": "Official executive report configuration"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated timestamp"
+        }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private user profile document"
+    },
+    "/users/{userId}/data/appState": {
+      "schema": "UserAppData",
+      "description": "User private persistent app data"
+    }
+  }
+}
