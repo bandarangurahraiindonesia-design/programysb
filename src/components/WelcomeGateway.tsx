@@ -13,7 +13,10 @@ import {
   Sparkles,
   BookOpen,
   MapPin,
-  FileText
+  FileText,
+  Copy,
+  ExternalLink,
+  Eye
 } from 'lucide-react';
 import { 
   createUserWithEmailAndPassword, 
@@ -25,9 +28,10 @@ import { auth, googleProvider, saveUserProfile } from '../firebase';
 
 interface WelcomeGatewayProps {
   onSuccess: (message: string) => void;
+  onBypassGuest?: () => void;
 }
 
-export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => {
+export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess, onBypassGuest }) => {
   // Always default to 'register' per user request: "klo blom register gk bisalog in jadi harus register dlu"
   const [mode, setMode] = useState<'register' | 'login'>('register');
 
@@ -42,6 +46,9 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [notRegisteredHint, setNotRegisteredHint] = useState(false);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
+  const [isOperationNotAllowed, setIsOperationNotAllowed] = useState(false);
+  const [domainCopied, setDomainCopied] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +73,8 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
     }
 
     setLoading(true);
+    setIsUnauthorizedDomain(false);
+    setIsOperationNotAllowed(false);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
@@ -89,7 +98,11 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
       } else if (err.code === 'auth/invalid-email') {
         setErrorMsg('Format email tidak valid. Harap gunakan format nama@domain.com.');
       } else if (err.code === 'auth/operation-not-allowed') {
-        setErrorMsg('Pendaftaran Email/Password belum diaktifkan di Firebase Console. Anda dapat masuk langsung menggunakan opsi "Masuk Cepat dengan Google" di bawah.');
+        setIsOperationNotAllowed(true);
+        setErrorMsg('Fitur pendaftaran Email/Password belum diaktifkan di Firebase Console.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setIsUnauthorizedDomain(true);
+        setErrorMsg(`Domain ${typeof window !== 'undefined' ? window.location.hostname : 'ini'} belum diizinkan di Firebase Authentication.`);
       } else if (err.code === 'auth/weak-password') {
         setErrorMsg('Kata sandi terlalu pendek/lemah. Buat minimal 6 karakter.');
       } else {
@@ -104,6 +117,8 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
     e.preventDefault();
     setErrorMsg(null);
     setNotRegisteredHint(false);
+    setIsUnauthorizedDomain(false);
+    setIsOperationNotAllowed(false);
 
     if (!email.trim() || !password) {
       setErrorMsg('Harap masukkan email dan kata sandi yang telah didaftarkan.');
@@ -128,7 +143,11 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
         setNotRegisteredHint(true);
         setErrorMsg('Akun belum terdaftar atau email/kata sandi salah. Anda harus mendaftar (Register) terlebih dahulu sebelum bisa Log In.');
       } else if (err.code === 'auth/operation-not-allowed') {
-        setErrorMsg('Masuk Email/Password belum diaktifkan di Firebase Console. Gunakan tombol "Masuk Cepat dengan Google" di bawah.');
+        setIsOperationNotAllowed(true);
+        setErrorMsg('Masuk Email/Password belum diaktifkan di Firebase Console.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setIsUnauthorizedDomain(true);
+        setErrorMsg(`Domain ${typeof window !== 'undefined' ? window.location.hostname : 'ini'} belum diizinkan di Firebase Authentication.`);
       } else {
         setErrorMsg(err.message || 'Gagal masuk. Pastikan akun sudah terdaftar dan kredensial sudah benar.');
       }
@@ -140,6 +159,8 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
     setNotRegisteredHint(false);
+    setIsUnauthorizedDomain(false);
+    setIsOperationNotAllowed(false);
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -156,6 +177,9 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
       console.error('Google Sign-In error:', err);
       if (err.code === 'auth/popup-closed-by-user') {
         setErrorMsg('Jendela pop-up autentikasi ditutup sebelum selesai.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setIsUnauthorizedDomain(true);
+        setErrorMsg(`Domain ${typeof window !== 'undefined' ? window.location.hostname : 'ini'} belum diizinkan di Firebase Authentication.`);
       } else {
         setErrorMsg(err.message || 'Gagal masuk dengan Google.');
       }
@@ -261,18 +285,87 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
             </div>
           )}
 
-          {/* Error Message with Register Switcher */}
+          {/* Error Message with Specific Guidance */}
           {errorMsg && (
-            <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl space-y-2 text-red-700 text-xs">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                <span className="font-semibold">{errorMsg}</span>
+            <div className="p-4 bg-red-50/90 border border-red-200 rounded-2xl space-y-3 text-red-800 text-xs shadow-2xs">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-red-900">{errorMsg}</p>
+                </div>
               </div>
+
+              {/* Special Guide: Unauthorized Domain (Vercel) */}
+              {isUnauthorizedDomain && (
+                <div className="bg-white p-3.5 rounded-xl border border-red-200/80 space-y-2.5 text-[11px] text-slate-700">
+                  <div className="flex items-center justify-between gap-2 bg-slate-100 p-2 rounded-lg border border-slate-200">
+                    <span className="font-mono text-slate-800 font-bold select-all truncate">
+                      {typeof window !== 'undefined' ? window.location.hostname : 'programysb.vercel.app'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && navigator?.clipboard) {
+                          navigator.clipboard.writeText(window.location.hostname);
+                          setDomainCopied(true);
+                          setTimeout(() => setDomainCopied(false), 2500);
+                        }
+                      }}
+                      className="shrink-0 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded text-[10px] flex items-center gap-1 transition-all"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{domainCopied ? 'Tersalin!' : 'Salin Domain'}</span>
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-1 text-slate-600 leading-relaxed">
+                    <p className="font-semibold text-slate-800">Cara Mengaktifkan di Firebase Console (Hanya 1 Menit):</p>
+                    <ol className="list-decimal list-inside space-y-1 pl-1">
+                      <li>Buka <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="text-emerald-700 font-bold underline inline-flex items-center gap-0.5">console.firebase.google.com <ExternalLink className="w-2.5 h-2.5" /></a></li>
+                      <li>Pilih Project: <code className="bg-slate-100 px-1 rounded font-bold text-emerald-800">dotted-clarity-lc9s2</code></li>
+                      <li>Klik <strong>Build</strong> → <strong>Authentication</strong> → Tab <strong>Settings</strong></li>
+                      <li>Pilih <strong>Authorized domains</strong> → Klik <strong>Add domain</strong></li>
+                      <li>Tempel domain yang Anda salin di atas, lalu klik <strong>Save (Simpan)</strong>.</li>
+                    </ol>
+                  </div>
+
+                  {onBypassGuest && (
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500">Ingin langsung melihat dan mencoba sistem sekarang?</span>
+                      <button
+                        type="button"
+                        onClick={onBypassGuest}
+                        className="text-[11px] text-emerald-800 font-black hover:underline flex items-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Akses Mode Tamu (Tanpa Login)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Special Guide: Operation Not Allowed (Email/Password disabled) */}
+              {isOperationNotAllowed && (
+                <div className="bg-white p-3.5 rounded-xl border border-red-200/80 space-y-2 text-[11px] text-slate-700">
+                  <p className="font-semibold text-slate-800">Cara Mengaktifkan Email & Sandi di Firebase:</p>
+                  <ol className="list-decimal list-inside space-y-1 pl-1 text-slate-600">
+                    <li>Buka <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="text-emerald-700 font-bold underline inline-flex items-center gap-0.5">console.firebase.google.com <ExternalLink className="w-2.5 h-2.5" /></a></li>
+                    <li>Pilih menu <strong>Authentication</strong> → Tab <strong>Sign-in method</strong></li>
+                    <li>Klik penyedia <strong>Email/Password</strong></li>
+                    <li>Nyalakan toggle <strong>Enable (Aktifkan)</strong> lalu klik <strong>Save</strong>.</li>
+                  </ol>
+                  <p className="text-[10px] text-slate-500 italic">
+                    Atau gunakan tombol Google Sign-In setelah domain Vercel diotorisasi di atas.
+                  </p>
+                </div>
+              )}
+
               {notRegisteredHint && (
                 <button
                   type="button"
-                  onClick={() => { setMode('register'); setErrorMsg(null); setNotRegisteredHint(false); }}
-                  className="mt-1 w-full py-1.5 px-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                  onClick={() => { setMode('register'); setErrorMsg(null); setNotRegisteredHint(false); setIsUnauthorizedDomain(false); }}
+                  className="mt-1 w-full py-2 px-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs"
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>Klik di Sini untuk Daftar Akun Baru (Register)</span>
@@ -480,7 +573,7 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
               Sudah pernah mendaftar akun sebelumnya?{' '}
               <button
                 type="button"
-                onClick={() => { setMode('login'); setErrorMsg(null); setNotRegisteredHint(false); }}
+                onClick={() => { setMode('login'); setErrorMsg(null); setNotRegisteredHint(false); setIsUnauthorizedDomain(false); }}
                 className="text-emerald-700 font-bold hover:underline"
               >
                 Masuk (Log In) di sini
@@ -491,12 +584,24 @@ export const WelcomeGateway: React.FC<WelcomeGatewayProps> = ({ onSuccess }) => 
               Belum pernah mendaftar akun?{' '}
               <button
                 type="button"
-                onClick={() => { setMode('register'); setErrorMsg(null); setNotRegisteredHint(false); }}
+                onClick={() => { setMode('register'); setErrorMsg(null); setNotRegisteredHint(false); setIsUnauthorizedDomain(false); }}
                 className="text-emerald-700 font-extrabold hover:underline"
               >
                 Harus mendaftar (Register) di sini dahulu
               </button>
             </p>
+          )}
+
+          {onBypassGuest && (
+            <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={onBypassGuest}
+                className="text-[11px] text-slate-500 hover:text-emerald-800 underline font-medium transition-colors"
+              >
+                Lanjutkan sementara dalam Mode Tamu (Pratinjau Langsung Tanpa Akun) →
+              </button>
+            </div>
           )}
         </div>
       </div>

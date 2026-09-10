@@ -75,6 +75,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [isSavingCloud, setIsSavingCloud] = useState(false);
   const [lastCloudSaved, setLastCloudSaved] = useState<string | null>(null);
+  const [guestMode, setGuestMode] = useState(false);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'register' | 'login'>('register');
@@ -461,8 +462,8 @@ export default function App() {
     );
   }
 
-  // 2. Authentication Gate: User MUST register or log in first before entering the application
-  if (!currentUser) {
+  // 2. Authentication Gate: User MUST register or log in first before entering the application (or enter Guest Mode)
+  if (!currentUser && !guestMode) {
     return (
       <>
         {toastMessage && (
@@ -471,7 +472,13 @@ export default function App() {
             <span>{toastMessage}</span>
           </div>
         )}
-        <WelcomeGateway onSuccess={(msg) => showToast(msg)} />
+        <WelcomeGateway 
+          onSuccess={(msg) => showToast(msg)} 
+          onBypassGuest={() => {
+            setGuestMode(true);
+            showToast('Anda masuk dalam Mode Pratinjau / Tamu. Data tersimpan di peramban lokal.');
+          }}
+        />
       </>
     );
   }

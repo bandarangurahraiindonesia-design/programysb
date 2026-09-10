@@ -97,7 +97,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setErrorMsg('Format email tidak valid.');
       } else if (err.code === 'auth/operation-not-allowed') {
         setProviderTip(true);
-        setErrorMsg('Pendaftaran Email/Password belum diaktifkan di Firebase Console. Anda dapat langsung menggunakan opsi "Masuk dengan Google" di bawah yang sudah aktif 100% instan.');
+        setErrorMsg('Pendaftaran Email/Password belum diaktifkan di Firebase Console. Aktifkan di Firebase Console > Authentication > Sign-in method.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setErrorMsg(`Domain (${typeof window !== 'undefined' ? window.location.hostname : 'website'}) belum diizinkan di Firebase. Tambahkan di Firebase Console > Authentication > Settings > Authorized domains.`);
       } else if (err.code === 'auth/weak-password') {
         setErrorMsg('Kata sandi terlalu mudah ditebak.');
       } else {
@@ -137,7 +139,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setErrorMsg('Email atau kata sandi tidak sesuai.');
       } else if (err.code === 'auth/operation-not-allowed') {
         setProviderTip(true);
-        setErrorMsg('Masuk dengan Email/Password belum diaktifkan di Firebase Console. Gunakan tombol "Masuk dengan Google" di bawah.');
+        setErrorMsg('Masuk dengan Email/Password belum diaktifkan di Firebase Console. Aktifkan di menu Sign-in method di Firebase Console.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setErrorMsg(`Domain (${typeof window !== 'undefined' ? window.location.hostname : 'website'}) belum diotorisasi di Firebase Authentication Settings.`);
       } else {
         setErrorMsg(err.message || 'Gagal masuk akun. Periksa koneksi atau kredensial Anda.');
       }
@@ -166,6 +170,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       console.error('Google Sign-In error:', err);
       if (err.code === 'auth/popup-closed-by-user') {
         setErrorMsg('Jendela pop-up ditutup sebelum masuk.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setErrorMsg(`Domain (${typeof window !== 'undefined' ? window.location.hostname : 'website'}) belum diizinkan di Firebase. Buka Firebase Console > Authentication > Settings > Authorized domains lalu tambahkan domain ini.`);
       } else {
         setErrorMsg(err.message || 'Gagal masuk dengan Google.');
       }
